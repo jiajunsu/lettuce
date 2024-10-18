@@ -11,8 +11,8 @@
     </Appenders>
 
     <Loggers>
-        <Logger name="io.lettuce.core.protocol" level="FATAL"/>
-        <Root level="FATAL">
+        <Logger name="io.lettuce.core.protocol" level="WARN"/>
+        <Root level="WARN">
             <AppenderRef ref="Console"/>
             <AppenderRef ref="File"/>
         </Root>

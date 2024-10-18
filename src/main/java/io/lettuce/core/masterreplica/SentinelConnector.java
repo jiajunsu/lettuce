@@ -52,6 +52,10 @@ class SentinelConnector<K, V> implements MasterReplicaConnector<K, V> {
 
     private final RedisURI redisURI;
 
+    public SentinelTopologyRefresh sentinelTopologyRefresh;
+
+    public MasterReplicaConnectionProvider<K, V> connectionProvider;
+
     SentinelConnector(RedisClient redisClient, RedisCodec<K, V> codec, RedisURI redisURI) {
         this.redisClient = redisClient;
         this.codec = codec;
@@ -62,12 +66,11 @@ class SentinelConnector<K, V> implements MasterReplicaConnector<K, V> {
     public CompletableFuture<StatefulRedisMasterReplicaConnection<K, V>> connectAsync() {
 
         TopologyProvider topologyProvider = new SentinelTopologyProvider(redisURI.getSentinelMasterId(), redisClient, redisURI);
-        SentinelTopologyRefresh sentinelTopologyRefresh = new SentinelTopologyRefresh(redisClient,
-                redisURI.getSentinelMasterId(), redisURI.getSentinels());
+        sentinelTopologyRefresh = new SentinelTopologyRefresh(redisClient, redisURI.getSentinelMasterId(),
+                redisURI.getSentinels());
 
         MasterReplicaTopologyRefresh refresh = new MasterReplicaTopologyRefresh(redisClient, topologyProvider);
-        MasterReplicaConnectionProvider<K, V> connectionProvider = new MasterReplicaConnectionProvider<>(redisClient, codec,
-                redisURI, Collections.emptyMap());
+        connectionProvider = new MasterReplicaConnectionProvider<>(redisClient, codec, redisURI, Collections.emptyMap());
 
         Runnable runnable = getTopologyRefreshRunnable(refresh, connectionProvider);
 
@@ -121,6 +124,7 @@ class SentinelConnector<K, V> implements MasterReplicaConnector<K, V> {
 
                     if (nodes.isEmpty()) {
                         LOG.warn("Topology refresh returned no nodes from {}", redisURI);
+                        // return; // fixed code
                     }
 
                     LOG.debug("New topology: {}", nodes);

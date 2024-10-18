@@ -116,6 +116,27 @@ class Connections extends CompletableEventLatchSupport<Tuple2<RedisURI, Stateful
         }
     }
 
+    public Requests requestPingFailed() {
+
+        Set<Map.Entry<RedisURI, StatefulRedisConnection<String, String>>> entries = new LinkedHashSet<>(
+                this.connections.entrySet());
+        Requests requests = new Requests(entries.size(), this.nodes);
+        requests.shouldFail(); // Inject error here
+
+        for (Map.Entry<RedisURI, StatefulRedisConnection<String, String>> entry : entries) {
+
+            CommandArgs<String, String> args = new CommandArgs<>(StringCodec.ASCII).add(CommandKeyword.NODES);
+            Command<String, String, String> command = new Command<>(CommandType.PING, new StatusOutput<>(StringCodec.ASCII),
+                    args);
+            TimedAsyncCommand<String, String, String> timedCommand = new TimedAsyncCommand<>(command);
+
+            entry.getValue().dispatch(timedCommand);
+            requests.addRequest(entry.getKey(), timedCommand);
+        }
+
+        return requests;
+    }
+
     /*
      * Initiate {@code PING} on all connections and return the {@link Requests}.
      * @return the {@link Requests}.

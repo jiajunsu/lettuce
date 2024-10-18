@@ -34,6 +34,8 @@ class MasterReplicaTopologyRefresh {
 
     private final ScheduledExecutorService eventExecutors;
 
+    private int count = 0;
+
     MasterReplicaTopologyRefresh(RedisClient client, TopologyProvider topologyProvider) {
         this(new RedisClientNodeConnectionFactory(client), client.getResources().eventExecutorGroup(), topologyProvider);
     }
@@ -54,10 +56,13 @@ class MasterReplicaTopologyRefresh {
      * @return mapping between {@link RedisURI} and {@link Partitions}
      */
     public Mono<List<RedisNodeDescription>> getNodes(RedisURI seed) {
+        count++;
+        logger.error("TEST: getNodes called count " + count);
 
         CompletableFuture<List<RedisNodeDescription>> future = topologyProvider.getNodesAsync();
 
         Mono<List<RedisNodeDescription>> initialNodes = Mono.fromFuture(future).doOnNext(nodes -> {
+            logger.error("TEST: refresh getNodes initialNodes " + nodes);
             applyAuthenticationCredentials(nodes, seed);
         });
 
@@ -65,12 +70,21 @@ class MasterReplicaTopologyRefresh {
                 .flatMap(asyncConnections -> asyncConnections.asMono(seed.getTimeout(), eventExecutors))
                 .flatMap(connections -> {
 
-                    Requests requests = connections.requestPing();
+                    Requests requests;
+                    if (count >= 2) {
+                        logger.error("TEST: inject requestPing failing");
+                        requests = connections.requestPingFailed();
+                    } else {
+                        requests = connections.requestPing();
+                    }
 
                     CompletionStage<List<RedisNodeDescription>> nodes = requests.getOrTimeout(seed.getTimeout(),
                             eventExecutors);
 
-                    return Mono.fromCompletionStage(nodes).flatMap(it -> ResumeAfter.close(connections).thenEmit(it));
+                    return Mono.fromCompletionStage(nodes).flatMap(it -> {
+                        logger.error("TEST: nodeList after ping " + it);
+                        return ResumeAfter.close(connections).thenEmit(it);
+                    });
                 });
     }
 

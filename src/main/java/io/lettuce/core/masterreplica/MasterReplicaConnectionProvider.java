@@ -50,7 +50,7 @@ class MasterReplicaConnectionProvider<K, V> {
 
     private final AsyncConnectionProvider<ConnectionKey, StatefulRedisConnection<K, V>, CompletionStage<StatefulRedisConnection<K, V>>> connectionProvider;
 
-    private List<RedisNodeDescription> knownNodes = new ArrayList<>();
+    public List<RedisNodeDescription> knownNodes = new ArrayList<>();
 
     private boolean autoFlushCommands = true;
 
